@@ -1,0 +1,8 @@
+Package: kcp
+Version: 1.7
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 49d3bbf87cb1092fec8e0c295afd5570835c8a303fcf662b1e726264fbe1f974
+Description: A fast and reliable ARQ protocol
+Status: install ok half-installed
