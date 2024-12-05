@@ -8,7 +8,7 @@ class LogUtil
 	{
 		_log("error", msg);
 	}
-	public static bool EnableDebugLog = false;
+	public static bool EnableDebugLog = true;
 	public static void Debug(string msg)
 	{
 		if(!EnableDebugLog) return;

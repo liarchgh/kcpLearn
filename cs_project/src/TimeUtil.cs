@@ -2,6 +2,6 @@ class TimeUtil
 {
 	public static long GetTimeStamp()
 	{
-		return new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
+		return new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 	}
 }

@@ -105,18 +105,20 @@ public partial class KCPUtil
 	public static void Input(byte[] data)
 	{
 		ikcp_input(KCPDataPtr, data, data.Length);
+		LogUtil.Debug($"KCPUtil.Input:{System.Text.Encoding.UTF8.GetString(data)}");
 	}
 
 	public static void Send(byte[] data)
 	{
 		ikcp_send(KCPDataPtr, data, data.Length);
+		LogUtil.Info($"KCPUtil.Send:{System.Text.Encoding.UTF8.GetString(data)}");
 	}
-	public static bool TryReceive(out byte[]? data)
+	public static bool TryReceive(out byte[] data)
 	{
 		var pckSize = ikcp_peeksize(KCPDataPtr);
-		if(pckSize <= 0)
+		if(pckSize < 0)
 		{
-			data = null;
+			data = [];
 			return false;
 		}
 		data = new byte[pckSize];
