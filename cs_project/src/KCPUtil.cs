@@ -12,9 +12,9 @@ public class IQUEUEHEAD {
 	public IntPtr next, prev;
 };
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate int KCP_OUTPUT(byte[] buf, int len, ref IKCPCB kcp, object user);
+public delegate int KCP_OUTPUT(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void KCP_WRITELOG(string log, ref IKCPCB kcp, object user);
+public delegate void KCP_WRITELOG(string log, ref IKCPCB kcp, USER_TYPE user);
 
 
 [StructLayout(LayoutKind.Sequential)]
@@ -50,7 +50,7 @@ public struct IKCPCB
 	public KCP_OUTPUT output;
 	public KCP_WRITELOG writelog;
 };
-public class KCPUtil
+public partial class KCPUtil
 {
 	private const string DLL_NAME = "kcp";
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
@@ -59,8 +59,19 @@ public class KCPUtil
 	private static extern void ikcp_update(IntPtr kcp, uint current);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
 	private static extern void ikcp_release(IntPtr kcp);
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	private static extern int ikcp_input(IntPtr kcp, byte[] data, long size);
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	private static extern int ikcp_send(IntPtr kcp, byte[] buffer, int len);
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	private static extern int ikcp_recv(IntPtr kcp, byte[] buffer, int len);
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	private static extern void ikcp_flush(IntPtr kcp);
+}
 
 
+public partial class KCPUtil
+{
 	public static IntPtr KCPDataPtr = IntPtr.Zero;
 	public static IKCPCB KCPData;
 	public static IKCPCB GetKCPData()
@@ -81,10 +92,38 @@ public class KCPUtil
 	}
 	public static void Update(uint current)
 	{
+		// from https://github.com/skywind3000/kcp/wiki/KCP-Basic-Usage
+		// 如 10ms调用一次，或用 ikcp_check确定下次调用 update的时间不必每次调用
 		ikcp_update(KCPDataPtr, current);
 	}
 	public static void Release()
 	{
 		ikcp_release(KCPDataPtr);
+	}
+	public static void Input(byte[] data)
+	{
+		ikcp_input(KCPDataPtr, data, data.Length);
+	}
+
+	public static void Send(byte[] data)
+	{
+		ikcp_send(KCPDataPtr, data, data.Length);
+	}
+	public static void Receive(byte[] data)
+	{
+		ikcp_recv(KCPDataPtr, data, data.Length);
+	}
+	public static void Flush()
+	{
+		ikcp_flush(KCPDataPtr);
+	}
+}
+
+public partial class KCPUtil
+{
+
+	public static bool IsReady()
+	{
+		return KCPDataPtr != IntPtr.Zero;
 	}
 }
