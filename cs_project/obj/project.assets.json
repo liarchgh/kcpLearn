@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\consoleApp\\consoleApp.csproj",
+      "projectUniqueName": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
       "projectName": "consoleApp",
-      "projectPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\consoleApp\\consoleApp.csproj",
+      "projectPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
       "packagesPath": "C:\\Users\\lisuzhenxin\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\consoleApp\\obj\\",
+      "outputPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\lisuzhenxin\\AppData\\Roaming\\NuGet\\NuGet.Config"

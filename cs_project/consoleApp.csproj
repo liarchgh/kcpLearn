@@ -6,5 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
+  <ItemGroup>
+    <!-- <Reference Include="kcp">
+      <HintPath>.\lib\kcp.dll</HintPath>
+    </Reference> -->
+    <OpenCascadeDLLs Include=".\lib\kcp.dll" />
+  </ItemGroup>
+  <Target Name="CopyOpenCascadeDlls" AfterTargets="AfterBuild">
+    <Copy SourceFiles="@(OpenCascadeDLLs)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
