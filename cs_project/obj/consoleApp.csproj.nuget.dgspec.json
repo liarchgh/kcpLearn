@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {}
+    "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {}
   },
   "projects": {
-    "c:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {
+    "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
+        "projectUniqueName": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
         "projectName": "consoleApp",
-        "projectPath": "c:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
+        "projectPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
         "packagesPath": "C:\\Users\\lisuzhenxin\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\obj\\",
+        "outputPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\lisuzhenxin\\AppData\\Roaming\\NuGet\\NuGet.Config"

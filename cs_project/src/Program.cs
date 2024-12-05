@@ -8,7 +8,7 @@ public class Program
 		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
 		var bytes = new byte[len];
 		Marshal.Copy(buf, bytes, 0, len);
-		LogUtil.Info($"ikcp_output, len={len}, user={user}, conv={kcp.conv}, buf:{System.Text.Encoding.UTF8.GetString(bytes)}");
+		LogUtil.Debug($"ikcp_output, len={len}, user={user}, conv={kcp.conv}, buf:{System.Text.Encoding.UTF8.GetString(bytes)}");
 		pcks.Enqueue(bytes);
 		return 0;
 	}
@@ -18,6 +18,7 @@ public class Program
 	}
 	public static void Main(string[] args)
 	{
+		LogUtil.Info(string.Join(",", args));
 		var netThread = new Thread(KCPRun);
 		var testInThread = new Thread(KCPTestIn);
 		var testOutThread = new Thread(KCPTestOut);
@@ -48,7 +49,6 @@ public class Program
 				var sleep = millisecondsTimeout - cost;
 				if(sleep > 0)
 				{
-					LogUtil.Info($"sleep: {sleep}");
 					Thread.Sleep((int)sleep);
 				}
 				else
@@ -75,10 +75,9 @@ public class Program
 		}
 		var ss = "asdf";
 		var bs = System.Text.Encoding.UTF8.GetBytes(ss);
-		var os = System.Text.Encoding.UTF8.GetString(bs);
 		KCPUtil.Send(bs);
 		KCPUtil.Flush();
-		LogUtil.Info($"KCPTestSend:{ss}, bytes:{os}");
+		LogUtil.Info($"KCPTestSend:{ss}");
 	}
 	public static void KCPTestInPck()
 	{
@@ -105,11 +104,12 @@ public class Program
 		}
 		while(true)
 		{
-			var bs = new byte[128];
-			KCPUtil.Receive(bs);
-			var ss = System.Text.Encoding.UTF8.GetString(bs);
-			LogUtil.Info($"KCPTestOut:{ss}");
-			Thread.Sleep(5000);
+			if(KCPUtil.TryReceive(out var bs))
+			{
+				var ss = System.Text.Encoding.UTF8.GetString(bs);
+				LogUtil.Info($"KCPTestOut:{ss}");
+			}
+			Thread.Sleep(1000);
 		}
 	}
 }

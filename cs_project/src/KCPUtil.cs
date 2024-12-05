@@ -67,6 +67,8 @@ public partial class KCPUtil
 	private static extern int ikcp_recv(IntPtr kcp, byte[] buffer, int len);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
 	private static extern void ikcp_flush(IntPtr kcp);
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	private static extern int ikcp_peeksize(IntPtr kcp);
 }
 
 
@@ -109,9 +111,17 @@ public partial class KCPUtil
 	{
 		ikcp_send(KCPDataPtr, data, data.Length);
 	}
-	public static void Receive(byte[] data)
+	public static bool TryReceive(out byte[]? data)
 	{
+		var pckSize = ikcp_peeksize(KCPDataPtr);
+		if(pckSize <= 0)
+		{
+			data = null;
+			return false;
+		}
+		data = new byte[pckSize];
 		ikcp_recv(KCPDataPtr, data, data.Length);
+		return true;
 	}
 	public static void Flush()
 	{
