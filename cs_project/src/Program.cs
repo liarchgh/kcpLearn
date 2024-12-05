@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-public class Program
+﻿public class Program
 {
 	public static int ikcp_output(byte[] buf, int len, ref IKCPCB kcp, object user) {
 		LogUtil.Info($"ikcp_output, len={len}, user={user}, conv={kcp.conv}");
@@ -11,20 +9,21 @@ public class Program
 		var netThread = new Thread(TestKCP);
 		netThread.Start();
 		// See https://aka.ms/new-console-template for more information
-		Console.WriteLine("Hello, World!");
+		Console.WriteLine("Main done");
 	}
 	public static int millisecondsTimeout = 500;
 	public static void TestKCP()
 	{
-		var kcpDataPtr = KCPUtil.ikcp_create(1, 33);
-		var kcpData = Marshal.PtrToStructure<IKCPCB>(kcpDataPtr);
+		KCPUtil.Create(1, 1101);
+		var kcpData = KCPUtil.GetKCPData();
 		kcpData.output = ikcp_output;
 		kcpData.writelog = ikcp_writelog;
+		KCPUtil.SetKCPData(kcpData);
 		while (true) {
 			try
 			{
 				var begin = TimeUtil.GetTimeStamp();
-				KCPUtil.ikcp_update(kcpDataPtr, (uint)begin);
+				KCPUtil.Update((uint)begin);
 				var end = TimeUtil.GetTimeStamp();
 				var cost = end - begin;
 				var sleep = millisecondsTimeout - cost;
@@ -44,7 +43,7 @@ public class Program
 				break;
 			}
 		}
-		KCPUtil.ikcp_release(kcpDataPtr);
+		KCPUtil.Release();
 	}
 }
 
