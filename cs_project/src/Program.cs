@@ -4,6 +4,8 @@ using USER_TYPE = int;
 public class Program
 {
 	public static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user) {
+		// from https://developer.aliyun.com/article/943678
+		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
 		var bytes = new byte[len];
 		Marshal.Copy(buf, bytes, 0, len);
 		LogUtil.Info($"ikcp_output, len={len}, user={user}, conv={kcp.conv}, buf:{System.Text.Encoding.UTF8.GetString(bytes)}");
