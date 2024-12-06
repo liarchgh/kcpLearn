@@ -8,7 +8,7 @@ a11s用unsafe接了一套，可参考着写
 */
 
 [StructLayout(LayoutKind.Sequential)]
-public class IQUEUEHEAD {
+public struct IQUEUEHEAD {
 	public IntPtr next, prev;
 };
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -61,8 +61,9 @@ public partial class KCPUtil
 	private static extern void ikcp_release(IntPtr kcp);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
 	private static extern int ikcp_input(IntPtr kcp, byte[] data, long size);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
+	[DllImport(DLL_NAME, CallingConvention = CallingConvention.StdCall)]
 	private static extern int ikcp_send(IntPtr kcp, byte[] buffer, int len);
+	// private static extern int ikcp_send(IntPtr kcp, IntPtr buffer, int len);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
 	private static extern int ikcp_recv(IntPtr kcp, byte[] buffer, int len);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
@@ -75,14 +76,13 @@ public partial class KCPUtil
 public partial class KCPUtil
 {
 	public static IntPtr KCPDataPtr = IntPtr.Zero;
-	public static IKCPCB KCPData;
 	public static IKCPCB GetKCPData()
 	{
 		return Marshal.PtrToStructure<IKCPCB>(KCPDataPtr);
 	}
 	public static void SetKCPData(IKCPCB kcpData)
 	{
-		Marshal.StructureToPtr(kcpData, KCPDataPtr, false);
+		Marshal.StructureToPtr(kcpData, KCPDataPtr, true);
 	}
 	public static void Create(uint conv, USER_TYPE user)
 	{
@@ -90,7 +90,6 @@ public partial class KCPUtil
 			throw new ArgumentNullException("user");
 		}
 		KCPDataPtr = ikcp_create(conv, user);
-		KCPData = Marshal.PtrToStructure<IKCPCB>(KCPDataPtr);
 	}
 	public static void Update(uint current)
 	{
@@ -104,19 +103,24 @@ public partial class KCPUtil
 	}
 	public static void Input(byte[] data)
 	{
-		ikcp_input(KCPDataPtr, data, data.Length);
 		LogUtil.Debug($"KCPUtil.Input:{System.Text.Encoding.UTF8.GetString(data)}");
+		ikcp_input(KCPDataPtr, data, data.Length);
 	}
 
 	public static void Send(byte[] data)
 	{
+		LogUtil.Debug($"KCPUtil.Send:{System.Text.Encoding.UTF8.GetString(data)}");
 		ikcp_send(KCPDataPtr, data, data.Length);
-		LogUtil.Info($"KCPUtil.Send:{System.Text.Encoding.UTF8.GetString(data)}");
+
+		// GCHandle pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
+		// IntPtr pointer = pinnedArray.AddrOfPinnedObject();
+		// ikcp_send(KCPDataPtr, pointer, data.Length);
+		// pinnedArray.Free();
 	}
 	public static bool TryReceive(out byte[] data)
 	{
 		var pckSize = ikcp_peeksize(KCPDataPtr);
-		if(pckSize < 0)
+		if(pckSize <= 0)
 		{
 			data = [];
 			return false;
