@@ -11,7 +11,7 @@ partial class UDPUtil
 		_iPEndPointLocal = new IPEndPoint(IPAddress.Loopback, localPort);
 		_iPEndPointRemote = new IPEndPoint(IPAddress.Loopback, remotePort);
 		_udpClient = new UdpClient(_iPEndPointLocal);
-		NetUtil.GenerateServiceThread("udp receive", TickReceiveMsg).Start();
+		NetUtil.GenerateServiceThreadNoSleep("udp receive", TickReceiveMsg).Start();
 	}
 	public static void SendByets(byte[] bs)
 	{

@@ -2,11 +2,9 @@ using System.Runtime.InteropServices;
 using USER_TYPE = int;
 partial class NetUtil
 {
-	public static int CLIENT_PORT = 19041;
-	public static int SERVER_PORT = 19042;
-	public static void StartClientThreads()
+	public static void StartClientThreads(int localPort, int remotePort)
 	{
-		UDPUtil.Init(CLIENT_PORT, SERVER_PORT);
+		UDPUtil.Init(localPort, remotePort);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();
@@ -26,9 +24,9 @@ partial class NetUtil
 			}
 		}).Start();
 	}
-	public static void StartServerThreads(Action<byte[]> action)
+	public static void StartServerThreads(int localPort, int remotePort, Action<byte[]> action)
 	{
-		UDPUtil.Init(SERVER_PORT, CLIENT_PORT);
+		UDPUtil.Init(localPort, remotePort);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();
@@ -65,6 +63,14 @@ partial class NetUtil
 	public delegate void ThreadRun(long timestamp);
 	public static Thread GenerateServiceThread(string name, ThreadRun action)
 	{
+		return GenerateServiceThreadFull(name, action, millisecondsTimeout);
+	}
+	public static Thread GenerateServiceThreadNoSleep(string name, ThreadRun action)
+	{
+		return GenerateServiceThreadFull(name, action, 0);
+	}
+	private static Thread GenerateServiceThreadFull(string name, ThreadRun action, int callInternal)
+	{
 		void run()
 		{
 			while (true) {
@@ -76,7 +82,11 @@ partial class NetUtil
 						action(begin);
 						var end = TimeUtil.GetTimeStamp();
 						var cost = end - begin;
-						var sleep = millisecondsTimeout - cost;
+						if(callInternal <= 0)
+						{
+							continue;
+						}
+						var sleep = callInternal - cost;
 						if(sleep <= 0)
 						{
 							LogUtil.Error($"sleep time too long, name:{name}, sleep:{sleep}, cost: {cost}, begin:{begin}, end:{end}");

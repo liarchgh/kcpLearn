@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using USER_TYPE = int;
 /*
+from https://github.com/skywind3000/kcp
 a11s用unsafe接了一套，可参考着写
 接口可参考：https://github.com/a11s/kcp_warpper/blob/master/kcpwarpper/KCP.cs
 类可参考：https://github.com/a11s/kcp_warpper/blob/master/kcpwarpper/IKCPSEG.cs
@@ -63,7 +64,6 @@ public partial class KCPUtil
 	private static extern int ikcp_input(IntPtr kcp, byte[] data, long size);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.StdCall)]
 	private static extern int ikcp_send(IntPtr kcp, byte[] buffer, int len);
-	// private static extern int ikcp_send(IntPtr kcp, IntPtr buffer, int len);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
 	private static extern int ikcp_recv(IntPtr kcp, byte[] buffer, int len);
 	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
