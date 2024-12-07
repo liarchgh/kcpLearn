@@ -284,18 +284,3 @@ blog: http://www.skywind.me
 
 This project exists thanks to all the people who contribute. 
 <a href="https://github.com/skywind3000/kcp/graphs/contributors"><img src="https://opencollective.com/kcp/contributors.svg?width=890&button=false" /></a>
-
-# Custom
-
-## build dll
-
-1. add line to `CMakeLists.txt`:
-   ```
-   option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
-   ```
-
-2. `mkdir build && cd build`
-
-3. `cmake -DCMAKE_BUILD_TYPE=Release ..`
-
-4. `cmake --build .`
