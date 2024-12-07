@@ -16,7 +16,6 @@ partial class NetUtil
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
-		// TODO 试试send和update一个线程，output回调里拿不到新的可能和这个有关
 		GenerateServiceThread("kcp update", (begin) =>
 		{
 			KCPUtil.Update((uint)begin);
