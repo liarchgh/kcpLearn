@@ -19,7 +19,7 @@
 			"preLaunchTask": "build",
 			// If you have changed target frameworks, make sure to update the program path.
 			"program": "${workspaceFolder}/bin/Debug/net8.0/consoleApp.dll",
-			"args": ["client"],
+			"args": ["client", "19041", "127.0.0.1", "19042"],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
@@ -35,7 +35,7 @@
 			"preLaunchTask": "build",
 			// If you have changed target frameworks, make sure to update the program path.
 			"program": "${workspaceFolder}/bin/Debug/net8.0/consoleApp.dll",
-			"args": ["server"],
+			"args": ["server", "19042", "127.0.0.1", "19041"],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",

@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 using USER_TYPE = int;
 partial class NetUtil
 {
-	public static void StartClientThreads(int localPort, int remotePort)
+	public static void StartClientThreads(int localPort, IPPort iPPort)
 	{
-		UDPUtil.Init(localPort, remotePort);
+		UDPUtil.Init(localPort, iPPort);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();
@@ -24,9 +24,9 @@ partial class NetUtil
 			}
 		}).Start();
 	}
-	public static void StartServerThreads(int localPort, int remotePort, Action<byte[]> action)
+	public static void StartServerThreads(int localPort, IPPort iPPort, Action<byte[]> action)
 	{
-		UDPUtil.Init(localPort, remotePort);
+		UDPUtil.Init(localPort, iPPort);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();

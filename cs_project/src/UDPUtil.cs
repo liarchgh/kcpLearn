@@ -1,15 +1,29 @@
 using System.Net;
 using System.Net.Sockets;
 // from https://www.cnblogs.com/chxl800/p/12072751.html
+public struct IPPort
+{
+	public IPAddress IP;
+	public int Port;
+	public IPPort(IPAddress ip, int port)
+	{
+		IP = ip;
+		Port = port;
+	}
+	public static IPPort Parse(string ip, string port)
+	{
+		return new IPPort(IPAddress.Parse(ip), int.Parse(port));
+	}
+}
 partial class UDPUtil
 {
 	private static UdpClient _udpClient;
 	private static IPEndPoint _iPEndPointLocal;
 	private static IPEndPoint _iPEndPointRemote;
-	public static void Init(int localPort, int remotePort)
+	public static void Init(int localPort, IPPort iPPort)
 	{
 		_iPEndPointLocal = new IPEndPoint(IPAddress.Loopback, localPort);
-		_iPEndPointRemote = new IPEndPoint(IPAddress.Loopback, remotePort);
+		_iPEndPointRemote = new IPEndPoint(iPPort.IP, iPPort.Port);
 		_udpClient = new UdpClient(_iPEndPointLocal);
 		NetUtil.GenerateServiceThreadNoSleep("udp receive", TickReceiveMsg).Start();
 	}

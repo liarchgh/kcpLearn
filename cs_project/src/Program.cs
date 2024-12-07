@@ -11,9 +11,14 @@ public class Program
 	public static void Main(string[] args)
 	{
 		LogUtil.Info(string.Join(",", args));
-		if(args.Contains(RUN_TYPE_SERVER))
+		var runType = args[0];
+		var localPortStr = args[1];
+		var remoteIP = args[2];
+		var remotePort = args[3];
+
+		if(runType == RUN_TYPE_SERVER)
 		{
-			NetUtil.StartServerThreads(SERVER_PORT, CLIENT_PORT,
+			NetUtil.StartServerThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort),
 				(bs) =>
 				{
 					var ss = System.Text.Encoding.UTF8.GetString(bs);
@@ -21,9 +26,9 @@ public class Program
 				}
 			);
 		}
-		else if(args.Contains(RUN_TYPE_CLIENT))
+		else if(runType == RUN_TYPE_CLIENT)
 		{
-			NetUtil.StartClientThreads(CLIENT_PORT, SERVER_PORT);
+			NetUtil.StartClientThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort));
 			while (true)
 			{
 				var input = Console.ReadLine();
