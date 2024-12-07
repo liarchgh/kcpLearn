@@ -1,11 +1,12 @@
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using USER_TYPE = int;
 partial class NetUtil
 {
-	public static void StartThreads()
+	public static int CLIENT_PORT = 19041;
+	public static int SERVER_PORT = 19042;
+	public static void StartClientThreads()
 	{
-		UDPUtil.StartThreads();
+		UDPUtil.Init(CLIENT_PORT, SERVER_PORT);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();
@@ -15,58 +16,20 @@ partial class NetUtil
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
-		GenerateServiceThread("kcp update", (begin) => KCPUtil.Update((uint)begin)).Start();
-		GenerateServiceThread(
-			"kcp receive",
-			(time) =>
-			{
-				if (KCPUtil.TryReceive(out var bs))
-				{
-					var ss = System.Text.Encoding.UTF8.GetString(bs);
-					LogUtil.Info($"KCPOut:{ss}");
-				}
-
-			}
-		).Start();
-		GenerateServiceThread(
-			"kcp send",
-			(time) =>
-			{
-				if(pcksToSend.TryDequeue(out var bs))
-				{
-					KCPUtil.Send(bs);
-				}
-			}
-		).Start();
-	}
-	public static int CLIENT_PORT = 19041;
-	public static int SERVER_PORT = 19042;
-	public static void StartClientThreads()
-	{
-		UDPClientUtil.StartClientThreads(CLIENT_PORT, SERVER_PORT);
-
-		KCPUtil.Create(1, 1101);
-		var kcpData = KCPUtil.GetKCPData();
-		kcpData.output = ikcp_output;
-		kcpData.writelog = ikcp_writelog;
-		KCPUtil.SetKCPData(kcpData);
-
 		// TODO 试试send和update一个线程，output回调里拿不到新的可能和这个有关
-		GenerateServiceThread("kcp update", (begin) => KCPUtil.Update((uint)begin)).Start();
-		GenerateServiceThread(
-			"kcp send",
-			(time) =>
+		GenerateServiceThread("kcp update", (begin) =>
+		{
+			KCPUtil.Update((uint)begin);
+			UDPUtil.HandleReceiveMsg(begin);
+			if(pcksToSend.TryDequeue(out var bs))
 			{
-				if(pcksToSend.TryDequeue(out var bs))
-				{
-					KCPUtil.Send(bs);
-				}
+				KCPUtil.Send(bs);
 			}
-		).Start();
+		}).Start();
 	}
 	public static void StartServerThreads(Action<byte[]> action)
 	{
-		UDPServerUtil.StartClientThreads(SERVER_PORT);
+		UDPUtil.Init(SERVER_PORT, CLIENT_PORT);
 
 		KCPUtil.Create(1, 1101);
 		var kcpData = KCPUtil.GetKCPData();
@@ -74,20 +37,17 @@ partial class NetUtil
 		kcpData.writelog = ikcp_writelog;
 		KCPUtil.SetKCPData(kcpData);
 
-		UDPServerUtil.AddListen(KCPUtil.Input);
+		UDPUtil.AddListen(KCPUtil.Input);
 
-		GenerateServiceThread("kcp update", (begin) => KCPUtil.Update((uint)begin)).Start();
-		GenerateServiceThread(
-			"kcp receive",
-			(time) =>
+		GenerateServiceThread("kcp update", (begin) =>
+		{
+			KCPUtil.Update((uint)begin);
+			UDPUtil.HandleReceiveMsg(begin);
+			if (KCPUtil.TryReceive(out var bs))
 			{
-				if (KCPUtil.TryReceive(out var bs))
-				{
-					action(bs);
-				}
-
+				action(bs);
 			}
-		).Start();
+		}).Start();
 	}
 	private static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user) {
 		// from https://developer.aliyun.com/article/943678
@@ -95,7 +55,7 @@ partial class NetUtil
 		var bytes = new byte[len];
 		Marshal.Copy(buf, bytes, 0, len);
 		LogUtil.Debug($"ikcp_output, len={len}, user={user}, buffer:{kcp.buffer}, incr:{kcp.incr}, cwnd:{kcp.cwnd}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}, buf:{System.Text.Encoding.UTF8.GetString(bytes)}");
-		UDPClientUtil.SendByets(bytes);
+		UDPUtil.SendByets(bytes);
 		return 0;
 	}
 	public static void ikcp_writelog(string log, ref IKCPCB kcp, USER_TYPE user)

@@ -111,16 +111,11 @@ public partial class KCPUtil
 	{
 		LogUtil.Debug($"KCPUtil.Send:{System.Text.Encoding.UTF8.GetString(data)}");
 		ikcp_send(KCPDataPtr, data, data.Length);
-
-		// GCHandle pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
-		// IntPtr pointer = pinnedArray.AddrOfPinnedObject();
-		// ikcp_send(KCPDataPtr, pointer, data.Length);
-		// pinnedArray.Free();
 	}
 	public static bool TryReceive(out byte[] data)
 	{
 		var pckSize = ikcp_peeksize(KCPDataPtr);
-		if(pckSize <= 0)
+		if(pckSize < 0)
 		{
 			data = [];
 			return false;
