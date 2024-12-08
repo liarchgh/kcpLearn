@@ -12,3 +12,4 @@ C:\Users\lisuzhenxin\Documents\Project\TestKCP\cs_project\obj\Debug\net8.0\refin
 C:\Users\lisuzhenxin\Documents\Project\TestKCP\cs_project\obj\Debug\net8.0\consoleApp.pdb
 C:\Users\lisuzhenxin\Documents\Project\TestKCP\cs_project\obj\Debug\net8.0\consoleApp.genruntimeconfig.cache
 C:\Users\lisuzhenxin\Documents\Project\TestKCP\cs_project\obj\Debug\net8.0\ref\consoleApp.dll
+C:\Users\lisuzhenxin\Documents\Project\TestKCP\cs_project\obj\Debug\net8.0\consoleApp.sourcelink.json

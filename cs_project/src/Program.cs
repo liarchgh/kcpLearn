@@ -21,14 +21,17 @@ public class Program
 			NetUtil.StartServerThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort),
 				(bs) =>
 				{
-					var ss = System.Text.Encoding.UTF8.GetString(bs);
-					LogUtil.Info($"output:{ss}");
+					var dataType = (NetUtil.DATA_TYPE)bs[0];
+					if(!NetUtil.PacketHandlers.TryGetValue(dataType, out var packetHandler)) return;
+					packetHandler.Invoke(bs[1..]);
 				}
 			);
 		}
 		else if(runType == RUN_TYPE_CLIENT)
 		{
 			NetUtil.StartClientThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort));
+			var fileSuffix = "f:";
+			var txtSuffix = "t:";
 			while (true)
 			{
 				var input = Console.ReadLine();
@@ -37,8 +40,15 @@ public class Program
 					continue;
 				}
 				LogUtil.Info($"input:{input}");
-				var bs = System.Text.Encoding.UTF8.GetBytes(input);
-				NetUtil.SendBytes(bs);
+				if(input.StartsWith(fileSuffix))
+				{
+					var filePath = input[fileSuffix.Length..];
+					NetUtil.SendFile(filePath);
+				}
+				else if(input.StartsWith(txtSuffix))
+				{
+					NetUtil.SendText(input[txtSuffix.Length..]);
+				}
 			}
 		}
 

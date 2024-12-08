@@ -18,9 +18,12 @@ partial class NetUtil
 		{
 			KCPUtil.Update((uint)begin);
 			UDPUtil.HandleReceiveMsg(begin);
-			if(pcksToSend.TryDequeue(out var bs))
+			if(_pcksToSend.TryDequeue(out var bs))
 			{
-				KCPUtil.Send(bs);
+				var bsToSend = new byte[bs.Item2.Length+1];
+				bsToSend[0] = (byte)bs.Item1;
+				bs.Item2.CopyTo(bsToSend, 1);
+				KCPUtil.Send(bsToSend);
 			}
 		}).Start();
 	}
@@ -106,9 +109,29 @@ partial class NetUtil
 	}
 
 
-	public static Queue<byte[]> pcksToSend = new Queue<byte[]>();
-	public static void SendBytes(byte[] bs)
+	public static Queue<(DATA_TYPE, byte[])> _pcksToSend = new Queue<(DATA_TYPE, byte[])>();
+	public static void SendText(string text)
 	{
-		pcksToSend.Enqueue(bs);
+		var bs = System.Text.Encoding.UTF8.GetBytes(text);
+		_sendBytes(DATA_TYPE.TEXT, bs);
 	}
+	public static void SendFile(string filePath)
+	{
+		var bs = File.ReadAllBytes(filePath);
+		_sendBytes(DATA_TYPE.FILE, bs);
+	}
+	private static void _sendBytes(DATA_TYPE dataType, byte[] bs)
+	{
+		_pcksToSend.Enqueue((dataType, bs));
+	}
+	public enum DATA_TYPE
+	{
+		TEXT =	0b01,
+		FILE =	0b10,
+	}
+	public static Dictionary<DATA_TYPE, Action<byte[]>> PacketHandlers = new Dictionary<DATA_TYPE, Action<byte[]>>()
+	{
+		{DATA_TYPE.TEXT, (bs) => { LogUtil.Info(System.Text.Encoding.UTF8.GetString(bs)); }},
+		{DATA_TYPE.FILE, (bs) => { File.WriteAllBytes("test.bin", bs); }},
+	};
 }
