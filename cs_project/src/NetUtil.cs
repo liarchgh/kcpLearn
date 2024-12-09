@@ -49,12 +49,29 @@ partial class NetUtil
 			}
 		}).Start();
 	}
+	// from https://chenqinghe.com/?p=25
+	//KCP帧头8字节对齐，KCP空包大小为24字节。
+
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |             conv              |  cmd  |  frg  |      wnd      |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |               ts              |               sn              |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |               una             |               len             |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |                                                               |
+	// *                              data                             *
+	// |                                                               |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
 	private static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user) {
 		// from https://developer.aliyun.com/article/943678
 		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
 		var bytes = new byte[len];
 		Marshal.Copy(buf, bytes, 0, len);
-		LogUtil.Debug($"ikcp_output, len={len}, user={user}, buffer:{kcp.buffer}, incr:{kcp.incr}, cwnd:{kcp.cwnd}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}, buf:{System.Text.Encoding.UTF8.GetString(bytes)}");
+		var cmd = bytes[4];
+		var frg = bytes[5];
+		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, state:{kcp.state}, conv={kcp.conv}");
+		// , buf:{System.Text.Encoding.UTF8.GetString(bytes)}
 		UDPUtil.SendByets(bytes);
 		return 0;
 	}
