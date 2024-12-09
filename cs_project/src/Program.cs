@@ -8,6 +8,8 @@ public class Program
 
 	public static int CLIENT_PORT = 19041;
 	public static int SERVER_PORT = 19042;
+	private static List<byte> _kcpPckReceiveCache = new List<byte>();
+	private static bool _kcpMULTPckReceiving => _kcpPckReceiveCache.Count > 0;
 	public static void Main(string[] args)
 	{
 		LogUtil.Info(string.Join(",", args));
@@ -18,14 +20,7 @@ public class Program
 
 		if(runType == RUN_TYPE_SERVER)
 		{
-			NetUtil.StartServerThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort),
-				(bs) =>
-				{
-					var dataType = (NetUtil.DATA_TYPE)bs[0];
-					if(!NetUtil.PacketHandlers.TryGetValue(dataType, out var packetHandler)) return;
-					packetHandler.Invoke(bs[1..]);
-				}
-			);
+			NetUtil.StartServerThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort), NetUtil.OnPckBytes);
 		}
 		else if(runType == RUN_TYPE_CLIENT)
 		{
@@ -51,7 +46,6 @@ public class Program
 				}
 			}
 		}
-
 	}
 }
 

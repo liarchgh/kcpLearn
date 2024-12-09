@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using USER_TYPE = int;
 partial class NetUtil
 {
@@ -14,16 +15,13 @@ partial class NetUtil
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
-		GenerateServiceThread("kcp update", (begin) =>
+		ThreadUtil.GenerateServiceThread("kcp update", (begin) =>
 		{
 			KCPUtil.Update((uint)begin);
 			UDPUtil.HandleReceiveMsg(begin);
 			if(_pcksToSend.TryDequeue(out var bs))
 			{
-				var bsToSend = new byte[bs.Item2.Length+1];
-				bsToSend[0] = (byte)bs.Item1;
-				bs.Item2.CopyTo(bsToSend, 1);
-				KCPUtil.Send(bsToSend);
+				KCPUtil.Send(GenKCPPck(bs.Item1, bs.Item2));
 			}
 		}).Start();
 	}
@@ -39,7 +37,7 @@ partial class NetUtil
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
-		GenerateServiceThread("kcp update", (begin) =>
+		ThreadUtil.GenerateServiceThread("kcp update", (begin) =>
 		{
 			KCPUtil.Update((uint)begin);
 			UDPUtil.HandleReceiveMsg(begin);
@@ -70,7 +68,7 @@ partial class NetUtil
 		Marshal.Copy(buf, bytes, 0, len);
 		var cmd = bytes[4];
 		var frg = bytes[5];
-		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, state:{kcp.state}, conv={kcp.conv}");
+		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}");
 		// , buf:{System.Text.Encoding.UTF8.GetString(bytes)}
 		UDPUtil.SendByets(bytes);
 		return 0;
@@ -79,76 +77,78 @@ partial class NetUtil
 	{
 		LogUtil.Info($"ikcp_writelog, log={log}, user={user}, conv={kcp.conv}");
 	}
-	public static int millisecondsTimeout = 100;
-	public delegate void ThreadRun(long timestamp);
-	public static Thread GenerateServiceThread(string name, ThreadRun action)
-	{
-		return GenerateServiceThreadFull(name, action, millisecondsTimeout);
-	}
-	public static Thread GenerateServiceThreadNoSleep(string name, ThreadRun action)
-	{
-		return GenerateServiceThreadFull(name, action, 0);
-	}
-	private static Thread GenerateServiceThreadFull(string name, ThreadRun action, int callInternal)
-	{
-		void run()
-		{
-			while (true) {
-				try
-				{
-					if(KCPUtil.IsReady())
-					{
-						var begin = TimeUtil.GetTimeStamp();
-						action(begin);
-						var end = TimeUtil.GetTimeStamp();
-						var cost = end - begin;
-						if(callInternal <= 0)
-						{
-							continue;
-						}
-						var sleep = callInternal - cost;
-						if(sleep <= 0)
-						{
-							LogUtil.Error($"sleep time too long, name:{name}, sleep:{sleep}, cost: {cost}, begin:{begin}, end:{end}");
-							continue;
-						}
-						Thread.Sleep((int)sleep);
-					}
-				}
-				catch (Exception e)
-				{
-					LogUtil.Error($"service exception, {e}, name:{name}");
-					break;
-				}
-			}
-		}
-		return new Thread(run);
-	}
-
-
-	public static Queue<(DATA_TYPE, byte[])> _pcksToSend = new Queue<(DATA_TYPE, byte[])>();
+	private static Queue<(PCK_TYPE, byte[])> _pcksToSend = new Queue<(PCK_TYPE, byte[])>();
 	public static void SendText(string text)
 	{
 		var bs = System.Text.Encoding.UTF8.GetBytes(text);
-		_sendBytes(DATA_TYPE.TEXT, bs);
+		_sendBytes(PCK_TYPE.TEXT, bs);
 	}
 	public static void SendFile(string filePath)
 	{
 		var bs = File.ReadAllBytes(filePath);
-		_sendBytes(DATA_TYPE.FILE, bs);
+		_sendBytes(PCK_TYPE.FILE, bs);
 	}
-	private static void _sendBytes(DATA_TYPE dataType, byte[] bs)
+	private static void _sendBytes(PCK_TYPE dataType, byte[] bs)
 	{
-		_pcksToSend.Enqueue((dataType, bs));
+		var kcpData = KCPUtil.GetKCPData();
+		var singlePckMaxSize = (int)kcpData.mss * (KCPUtil.FRG_MAX-1)-1;
+		var multPckMaxSize = singlePckMaxSize-1;
+		if(bs.Length >= singlePckMaxSize)
+		{
+			var pckBytes = GenKCPPck(dataType, bs);
+			var mulCount = Math.Ceiling((float)pckBytes.Length / multPckMaxSize);
+			for(int i = 0; i < mulCount; i++)
+			{
+				var startIdx = i * multPckMaxSize;
+				var endIdx = Math.Min(startIdx + multPckMaxSize, pckBytes.Length);
+				var mulPck = pckBytes[startIdx..endIdx];
+				var mulDataType = i == mulCount-1?PCK_TYPE.MULE:PCK_TYPE.MULS;
+				_pcksToSend.Enqueue((mulDataType, mulPck));
+			}
+		}
+		else
+		{
+			_pcksToSend.Enqueue((dataType, bs));
+		}
 	}
-	public enum DATA_TYPE
+	private static byte[] GenKCPPck(PCK_TYPE dataType, byte[] bs)
 	{
-		TEXT =	0b01,
-		FILE =	0b10,
+		var bsToSend = new byte[bs.Length+1];
+		bsToSend[0] = (byte)dataType;
+		bs.CopyTo(bsToSend, 1);
+		return bsToSend;
 	}
-	public static Dictionary<DATA_TYPE, Action<byte[]>> PacketHandlers = new Dictionary<DATA_TYPE, Action<byte[]>>()
+	private enum PCK_TYPE
 	{
-		{DATA_TYPE.TEXT, (bs) => { LogUtil.Info(System.Text.Encoding.UTF8.GetString(bs)); }},
-		{DATA_TYPE.FILE, (bs) => { File.WriteAllBytes("test.bin", bs); }},
+		MULS =	0x00,
+		MULE =	0x01,
+		TEXT =	0x02,
+		FILE =	0x03,
+	}
+	private static Dictionary<PCK_TYPE, Action<byte[]>> PacketHandlers = new Dictionary<PCK_TYPE, Action<byte[]>>()
+	{
+		// DEBUG
+		{PCK_TYPE.TEXT, (bs) => { LogUtil.Info(System.Text.Encoding.UTF8.GetString(bs)); }},
+		{PCK_TYPE.FILE, (bs) => { File.WriteAllBytes("test.bin", bs); }},
 	};
+	private static List<byte> _kcpPckReceiveCache = new List<byte>();
+	public static void OnPckBytes(byte[] bs)
+	{
+		var dataType = (PCK_TYPE)bs[0];
+		if(dataType == PCK_TYPE.MULS
+			|| dataType == PCK_TYPE.MULE)
+		{
+			_kcpPckReceiveCache.AddRange(bs[1..]);
+			if(dataType == PCK_TYPE.MULE)
+			{
+				var pckBs = _kcpPckReceiveCache.ToArray();
+				_kcpPckReceiveCache.Clear();
+				OnPckBytes(pckBs);
+			}
+		}
+		else if(PacketHandlers.TryGetValue(dataType, out var packetHandler))
+		{
+			packetHandler.Invoke(bs[1..]);
+		}
+	}
 }

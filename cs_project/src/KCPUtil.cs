@@ -75,6 +75,7 @@ public partial class KCPUtil
 
 public partial class KCPUtil
 {
+	public static int FRG_MAX = 127;
 	public static IntPtr KCPDataPtr = IntPtr.Zero;
 	public static IKCPCB GetKCPData()
 	{
