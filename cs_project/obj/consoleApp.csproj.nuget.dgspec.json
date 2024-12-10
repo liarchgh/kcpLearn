@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {}
+    "C:\\Users\\liarc\\Documents\\Project\\kcpLearn\\cs_project\\consoleApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj": {
+    "C:\\Users\\liarc\\Documents\\Project\\kcpLearn\\cs_project\\consoleApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
+        "projectUniqueName": "C:\\Users\\liarc\\Documents\\Project\\kcpLearn\\cs_project\\consoleApp.csproj",
         "projectName": "consoleApp",
-        "projectPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\consoleApp.csproj",
-        "packagesPath": "C:\\Users\\lisuzhenxin\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lisuzhenxin\\Documents\\Project\\TestKCP\\cs_project\\obj\\",
+        "projectPath": "C:\\Users\\liarc\\Documents\\Project\\kcpLearn\\cs_project\\consoleApp.csproj",
+        "packagesPath": "C:\\Users\\liarc\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\liarc\\Documents\\Project\\kcpLearn\\cs_project\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\lisuzhenxin\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\liarc\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -58,7 +58,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.203/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

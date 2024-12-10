@@ -13,13 +13,29 @@
 			// Use IntelliSense to find out which attributes exist for C# debugging
 			// Use hover for the description of the existing attributes
 			// For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
-			"name": "kcp client",
+			"name": "kcp client 1",
 			"type": "coreclr",
 			"request": "launch",
 			"preLaunchTask": "build",
 			// If you have changed target frameworks, make sure to update the program path.
 			"program": "${workspaceFolder}/bin/Debug/net8.0/consoleApp.dll",
-			"args": ["client", "19041", "127.0.0.1", "19042"],
+			"args": ["client", "19041", "127.0.0.1", "19051"],
+			"cwd": "${workspaceFolder}",
+			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+			"console": "internalConsole",
+			"stopAtEntry": false
+		},
+		{
+			// Use IntelliSense to find out which attributes exist for C# debugging
+			// Use hover for the description of the existing attributes
+			// For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
+			"name": "kcp client 2",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build",
+			// If you have changed target frameworks, make sure to update the program path.
+			"program": "${workspaceFolder}/bin/Debug/net8.0/consoleApp.dll",
+			"args": ["client", "19041", "127.0.0.1", "19051"],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
@@ -35,7 +51,7 @@
 			"preLaunchTask": "build",
 			// If you have changed target frameworks, make sure to update the program path.
 			"program": "${workspaceFolder}/bin/Debug/net8.0/consoleApp.dll",
-			"args": ["server", "19042", "127.0.0.1", "19041"],
+			"args": ["server", "19051", "127.0.0.1", "19041"],
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
