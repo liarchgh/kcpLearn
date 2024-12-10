@@ -1,62 +1,76 @@
 using System.Net;
 using System.Net.Sockets;
-// from https://www.cnblogs.com/chxl800/p/12072751.html
-public struct IPPort
-{
-	public IPAddress IP;
-	public int Port;
-	public IPPort(IPAddress ip, int port)
-	{
-		IP = ip;
-		Port = port;
-	}
-	public static IPPort Parse(string ip, string port)
-	{
-		return new IPPort(IPAddress.Parse(ip), int.Parse(port));
-	}
-}
 partial class UDPUtil
 {
 	private static UdpClient _udpClient;
 	private static IPEndPoint _iPEndPointLocal;
-	private static IPEndPoint _iPEndPointRemote;
-	public static void Init(int localPort, IPPort iPPort)
+	public static void Init(int localPort)
 	{
 		_iPEndPointLocal = new IPEndPoint(IPAddress.Loopback, localPort);
-		_iPEndPointRemote = new IPEndPoint(iPPort.IP, iPPort.Port);
-		_udpClient = new UdpClient(_iPEndPointLocal);
+		while(true)
+		{
+			try
+			{
+				_udpClient = new UdpClient(_iPEndPointLocal);
+				LogUtil.Info($"game is on port:{_iPEndPointLocal}");
+				break;
+			}
+			catch (SocketException e)
+			{
+				LogUtil.Debug($"port is in used, port:{localPort}, exception:{e}");
+				++_iPEndPointLocal.Port;
+				continue;
+			}
+		}
 		ThreadUtil.GenerateServiceThreadNoSleep("udp receive", TickReceiveMsg).Start();
 	}
-	public static void SendByets(byte[] bs)
+	public static void SendByets(IPEndPoint remote, byte[] bs)
 	{
-		_udpClient.Send(bs, bs.Length, _iPEndPointRemote);
-		LogUtil.Debug($"udp send, local:{_iPEndPointLocal}, remote:{_iPEndPointRemote}, bytes:{System.Text.Encoding.UTF8.GetString(bs)}");
+		_udpClient.Send(bs, bs.Length, remote);
+		LogUtil.Debug($"udp send, local:{_iPEndPointLocal}, remote:{remote}, bytes:{System.Text.Encoding.UTF8.GetString(bs)}");
+	}
+	// from https://www.cnblogs.com/chxl800/p/12072751.html
+	public static IPEndPoint ParseIPEndPort(string ip, string port)
+	{
+		return new IPEndPoint(IPAddress.Parse(ip), int.Parse(port));
 	}
 
-	private static Queue<byte[]> _pcksReceived = new Queue<byte[]>();
+	private class PckReceiveInfo
+	{
+		public byte[] Data;
+		public IPEndPoint Remote;
+		public PckReceiveInfo(byte[] bs, IPEndPoint remote)
+		{
+			Data = bs;
+			Remote = remote;
+		}
+	}
+	private static Queue<PckReceiveInfo> _pcksReceived = new Queue<PckReceiveInfo>();
 	public static void TickReceiveMsg(long timestamp)
 	{
-		var bs = _udpClient.Receive(ref _iPEndPointRemote);
-		if(bs == null || bs.Length <= 0) return;
-		_pcksReceived.Enqueue(bs);
-		LogUtil.Debug($"udp receive, local:{_iPEndPointLocal}, remote:{_iPEndPointRemote}, bytes:{System.Text.Encoding.UTF8.GetString(bs)}");
+		IPEndPoint remote = null;
+		var bs = _udpClient.Receive(ref remote);
+		if(bs == null || bs.Length <= 0 || remote == null) return;
+		var newPckInfo = new PckReceiveInfo(bs, remote);
+		_pcksReceived.Enqueue(newPckInfo);
+		LogUtil.Debug($"udp receive, local:{_iPEndPointLocal}, remote:{remote}, bytes:{System.Text.Encoding.UTF8.GetString(bs)}");
 	}
 
 	public static void HandleReceiveMsg(long timestamp)
 	{
-		while (_pcksReceived.TryDequeue(out var bs))
+		while (_pcksReceived.TryDequeue(out var pckInfo))
 		{
-			foreach (var handler in packetHandlers)
+			foreach (var handler in _packetHandlers)
 			{
-				handler(bs);
+				handler(pckInfo.Remote, pckInfo.Data);
 			}
-			LogUtil.Debug($"udp handle, local:{_iPEndPointLocal}, remote:{_iPEndPointRemote}, bytes:{System.Text.Encoding.UTF8.GetString(bs)}");
+			LogUtil.Debug($"udp handle, local:{_iPEndPointLocal}, remote:{pckInfo.Remote}");
 		}
 	}
-	public delegate void PacketHandler(byte[] bytes);
-	public static List<PacketHandler> packetHandlers = new List<PacketHandler>();
+	public delegate void PacketHandler(IPEndPoint source, byte[] bytes);
+	private static List<PacketHandler> _packetHandlers = new List<PacketHandler>();
 	public static void AddListen(PacketHandler packetHandler)
 	{
-		packetHandlers.Add(packetHandler);
+		_packetHandlers.Add(packetHandler);
 	}
 }

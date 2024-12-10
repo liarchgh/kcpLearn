@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Net;
 using System.Runtime.InteropServices;
 using USER_TYPE = int;
 /*
@@ -77,6 +77,38 @@ public partial class KCPUtil
 {
 	public static int FRG_MAX = 127;
 	public static IntPtr KCPDataPtr = IntPtr.Zero;
+	// from https://chenqinghe.com/?p=25
+	//KCP帧头8字节对齐，KCP空包大小为24字节。
+
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |             conv              |  cmd  |  frg  |      wnd      |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |               ts              |               sn              |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |               una             |               len             |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	// |                                                               |
+	// *                              data                             *
+	// |                                                               |
+	// +-------+-------+-------+-------+-------+-------+-------+-------+
+	private static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user)
+	{
+		if(!_remoteEPs.TryGetValue(kcp.conv, out var remote)) return 0;
+		// from https://developer.aliyun.com/article/943678
+		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
+		var bytes = new byte[len];
+		Marshal.Copy(buf, bytes, 0, len);
+		var cmd = bytes[4];
+		var frg = bytes[5];
+		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}");
+		// , buf:{System.Text.Encoding.UTF8.GetString(bytes)}
+		UDPUtil.SendByets(remote, bytes);
+		return 0;
+	}
+	private static void ikcp_writelog(string log, ref IKCPCB kcp, USER_TYPE user)
+	{
+		LogUtil.Info($"ikcp_writelog, log={log}, user={user}, conv={kcp.conv}");
+	}
 	public static IKCPCB GetKCPData()
 	{
 		return Marshal.PtrToStructure<IKCPCB>(KCPDataPtr);
@@ -85,12 +117,18 @@ public partial class KCPUtil
 	{
 		Marshal.StructureToPtr(kcpData, KCPDataPtr, true);
 	}
-	public static void Create(uint conv, USER_TYPE user)
+	public static void Create(uint conv, USER_TYPE user, IPEndPoint iPPort)
 	{
 		if(user == null){
 			throw new ArgumentNullException("user");
 		}
 		KCPDataPtr = ikcp_create(conv, user);
+		_remoteEPs.Add(conv, iPPort);
+
+		var kcpData = GetKCPData();
+		kcpData.output = ikcp_output;
+		kcpData.writelog = ikcp_writelog;
+		SetKCPData(kcpData);
 	}
 	public static void Update(uint current)
 	{
@@ -102,10 +140,13 @@ public partial class KCPUtil
 	{
 		ikcp_release(KCPDataPtr);
 	}
-	public static void Input(byte[] data)
+	private static Dictionary<uint, IPEndPoint> _remoteEPs = new Dictionary<uint, IPEndPoint>();
+	public static void Input(IPEndPoint remote, byte[] data)
 	{
 		LogUtil.Debug($"KCPUtil.Input:{System.Text.Encoding.UTF8.GetString(data)}");
 		ikcp_input(KCPDataPtr, data, data.Length);
+		var kcpData = GetKCPData();
+		_remoteEPs[kcpData.conv] = remote;
 	}
 
 	public static void Send(byte[] data)

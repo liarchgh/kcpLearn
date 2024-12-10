@@ -1,17 +1,12 @@
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using USER_TYPE = int;
+using System.Net;
+
 partial class NetUtil
 {
-	public static void StartClientThreads(int localPort, IPPort iPPort)
+	public static void StartClientThreads(int localPort, IPEndPoint iPPort)
 	{
-		UDPUtil.Init(localPort, iPPort);
+		UDPUtil.Init(localPort);
 
-		KCPUtil.Create(1, 1101);
-		var kcpData = KCPUtil.GetKCPData();
-		kcpData.output = ikcp_output;
-		kcpData.writelog = ikcp_writelog;
-		KCPUtil.SetKCPData(kcpData);
+		KCPUtil.Create(1, 1101, iPPort);
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
@@ -25,15 +20,11 @@ partial class NetUtil
 			}
 		}).Start();
 	}
-	public static void StartServerThreads(int localPort, IPPort iPPort, Action<byte[]> action)
+	public static void StartServerThreads(int localPort, IPEndPoint iPPort, Action<byte[]> action)
 	{
-		UDPUtil.Init(localPort, iPPort);
+		UDPUtil.Init(localPort);
 
-		KCPUtil.Create(1, 1101);
-		var kcpData = KCPUtil.GetKCPData();
-		kcpData.output = ikcp_output;
-		kcpData.writelog = ikcp_writelog;
-		KCPUtil.SetKCPData(kcpData);
+		KCPUtil.Create(1, 1101, iPPort);
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
@@ -46,36 +37,6 @@ partial class NetUtil
 				action(bs);
 			}
 		}).Start();
-	}
-	// from https://chenqinghe.com/?p=25
-	//KCP帧头8字节对齐，KCP空包大小为24字节。
-
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |             conv              |  cmd  |  frg  |      wnd      |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |               ts              |               sn              |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |               una             |               len             |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |                                                               |
-	// *                              data                             *
-	// |                                                               |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	private static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user) {
-		// from https://developer.aliyun.com/article/943678
-		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
-		var bytes = new byte[len];
-		Marshal.Copy(buf, bytes, 0, len);
-		var cmd = bytes[4];
-		var frg = bytes[5];
-		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}");
-		// , buf:{System.Text.Encoding.UTF8.GetString(bytes)}
-		UDPUtil.SendByets(bytes);
-		return 0;
-	}
-	public static void ikcp_writelog(string log, ref IKCPCB kcp, USER_TYPE user)
-	{
-		LogUtil.Info($"ikcp_writelog, log={log}, user={user}, conv={kcp.conv}");
 	}
 	private static Queue<(PCK_TYPE, byte[])> _pcksToSend = new Queue<(PCK_TYPE, byte[])>();
 	public static void SendText(string text)

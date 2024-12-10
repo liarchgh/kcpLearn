@@ -5,11 +5,6 @@ public class Program
 {
 	public static string RUN_TYPE_SERVER = "server";
 	public static string RUN_TYPE_CLIENT = "client";
-
-	public static int CLIENT_PORT = 19041;
-	public static int SERVER_PORT = 19042;
-	private static List<byte> _kcpPckReceiveCache = new List<byte>();
-	private static bool _kcpMULTPckReceiving => _kcpPckReceiveCache.Count > 0;
 	public static void Main(string[] args)
 	{
 		LogUtil.Info(string.Join(",", args));
@@ -20,11 +15,11 @@ public class Program
 
 		if(runType == RUN_TYPE_SERVER)
 		{
-			NetUtil.StartServerThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort), NetUtil.OnPckBytes);
+			NetUtil.StartServerThreads(int.Parse(localPortStr), UDPUtil.ParseIPEndPort(remoteIP, remotePort), NetUtil.OnPckBytes);
 		}
 		else if(runType == RUN_TYPE_CLIENT)
 		{
-			NetUtil.StartClientThreads(int.Parse(localPortStr), IPPort.Parse(remoteIP, remotePort));
+			NetUtil.StartClientThreads(int.Parse(localPortStr), UDPUtil.ParseIPEndPort(remoteIP, remotePort));
 			var fileSuffix = "f:";
 			var txtSuffix = "t:";
 			while (true)
