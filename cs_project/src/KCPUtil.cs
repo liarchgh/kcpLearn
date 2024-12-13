@@ -1,182 +1,69 @@
 using System.Net;
-using System.Runtime.InteropServices;
-using USER_TYPE = int;
-/*
-from https://github.com/skywind3000/kcp
-a11s用unsafe接了一套，可参考着写
-接口可参考：https://github.com/a11s/kcp_warpper/blob/master/kcpwarpper/KCP.cs
-类可参考：https://github.com/a11s/kcp_warpper/blob/master/kcpwarpper/IKCPSEG.cs
-*/
-
-[StructLayout(LayoutKind.Sequential)]
-public struct IQUEUEHEAD {
-	public IntPtr next, prev;
-};
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate int KCP_OUTPUT(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user);
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate void KCP_WRITELOG(string log, ref IKCPCB kcp, USER_TYPE user);
-
-
-[StructLayout(LayoutKind.Sequential)]
-public struct IKCPCB
-{
-	public uint conv, mtu, mss, state;
-	public uint snd_una, snd_nxt, rcv_nxt;
-	public uint ts_recent, ts_lastack, ssthresh;
-	public int rx_rttval, rx_srtt, rx_rto, rx_minrto;
-	public uint snd_wnd, rcv_wnd, rmt_wnd, cwnd, probe;
-	public uint current, interval, ts_flush, xmit;
-	public uint nrcv_buf, nsnd_buf;
-	public uint nrcv_que, nsnd_que;
-	public uint nodelay, updated;
-	public uint ts_probe, probe_wait;
-	public uint dead_link, incr;
-	public IQUEUEHEAD snd_queue;
-	public IQUEUEHEAD rcv_queue;
-	public IQUEUEHEAD snd_buf;
-	public IQUEUEHEAD rcv_buf;
-	// byte*
-	public IntPtr acklist;
-	public uint ackcount;
-	public uint ackblock;
-	// ikcp_setoutput和里面output接收参数格式一致
-	public USER_TYPE user;
-	// byte*
-	public IntPtr buffer;
-	public int fastresend;
-	public int fastlimit;
-	public int nocwnd, stream;
-	public int logmask;
-	public KCP_OUTPUT output;
-	public KCP_WRITELOG writelog;
-};
-public partial class KCPUtil
-{
-	private const string DLL_NAME = "kcp";
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern IntPtr ikcp_create(uint conv, object user);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern void ikcp_update(IntPtr kcp, uint current);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern void ikcp_release(IntPtr kcp);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern int ikcp_input(IntPtr kcp, byte[] data, long size);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.StdCall)]
-	private static extern int ikcp_send(IntPtr kcp, byte[] buffer, int len);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern int ikcp_recv(IntPtr kcp, byte[] buffer, int len);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern void ikcp_flush(IntPtr kcp);
-	[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-	private static extern int ikcp_peeksize(IntPtr kcp);
-}
-
 
 public partial class KCPUtil
 {
 	public static int FRG_MAX = 127;
-	public static IntPtr KCPDataPtr = IntPtr.Zero;
-	// from https://chenqinghe.com/?p=25
-	//KCP帧头8字节对齐，KCP空包大小为24字节。
-
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |             conv              |  cmd  |  frg  |      wnd      |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |               ts              |               sn              |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |               una             |               len             |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	// |                                                               |
-	// *                              data                             *
-	// |                                                               |
-	// +-------+-------+-------+-------+-------+-------+-------+-------+
-	private static int ikcp_output(IntPtr buf, int len, ref IKCPCB kcp, USER_TYPE user)
+	public static Dictionary<KCPConnectKey, KCPConnect> _KCPConnects = new Dictionary<KCPConnectKey, KCPConnect>();
+	public static bool TryGetKCPData(KCPConnectKey connectKey, out IKCPCB kcpData)
 	{
-		if(!_remoteEPs.TryGetValue(kcp.conv, out var remote)) return 0;
-		// from https://developer.aliyun.com/article/943678
-		// 回调的话得用IntPtr，不能直接用byte[]，然后自己转bytes[]
-		var bytes = new byte[len];
-		Marshal.Copy(buf, bytes, 0, len);
-		var cmd = bytes[4];
-		var frg = bytes[5];
-		LogUtil.Debug($"ikcp_output, len={len}, frg:{frg}, cmd:{cmd}, user={user}, stream:{kcp.stream}, mtu:{kcp.mtu}, mss:{kcp.mss}, state:{kcp.state}, conv={kcp.conv}");
-		// , buf:{System.Text.Encoding.UTF8.GetString(bytes)}
-		UDPUtil.SendByets(remote, bytes);
-		return 0;
-	}
-	private static void ikcp_writelog(string log, ref IKCPCB kcp, USER_TYPE user)
-	{
-		LogUtil.Info($"ikcp_writelog, log={log}, user={user}, conv={kcp.conv}");
-	}
-	public static IKCPCB GetKCPData()
-	{
-		return Marshal.PtrToStructure<IKCPCB>(KCPDataPtr);
-	}
-	public static void SetKCPData(IKCPCB kcpData)
-	{
-		Marshal.StructureToPtr(kcpData, KCPDataPtr, true);
-	}
-	public static void Create(uint conv, USER_TYPE user, IPEndPoint iPPort)
-	{
-		if(user == null){
-			throw new ArgumentNullException("user");
+		if(_KCPConnects.TryGetValue(connectKey, out var kcp))
+		{
+			kcpData = kcp.GetKCPData();
+			return true;
 		}
-		KCPDataPtr = ikcp_create(conv, user);
-		_remoteEPs.Add(conv, iPPort);
-
-		var kcpData = GetKCPData();
-		kcpData.output = ikcp_output;
-		kcpData.writelog = ikcp_writelog;
-		SetKCPData(kcpData);
+		kcpData = new IKCPCB();
+		return false;
+	}
+	public static KCPConnectKey Connect(IPEndPoint iPEndPoint)
+	{
+		var connectKey = new KCPConnectKey(iPEndPoint);
+		var kcp = new KCPConnect();
+		kcp.Create(iPEndPoint);
+		_KCPConnects.Add(connectKey, kcp);
+		return connectKey;
 	}
 	public static void Update(uint current)
 	{
-		// from https://github.com/skywind3000/kcp/wiki/KCP-Basic-Usage
-		// 如 10ms调用一次，或用 ikcp_check确定下次调用 update的时间不必每次调用
-		ikcp_update(KCPDataPtr, current);
-	}
-	public static void Release()
-	{
-		ikcp_release(KCPDataPtr);
-	}
-	private static Dictionary<uint, IPEndPoint> _remoteEPs = new Dictionary<uint, IPEndPoint>();
-	public static void Input(IPEndPoint remote, byte[] data)
-	{
-		LogUtil.Debug($"KCPUtil.Input:{System.Text.Encoding.UTF8.GetString(data)}");
-		ikcp_input(KCPDataPtr, data, data.Length);
-		var kcpData = GetKCPData();
-		_remoteEPs[kcpData.conv] = remote;
-	}
-
-	public static void Send(byte[] data)
-	{
-		LogUtil.Debug($"KCPUtil.Send:{System.Text.Encoding.UTF8.GetString(data)}");
-		ikcp_send(KCPDataPtr, data, data.Length);
-	}
-	public static bool TryReceive(out byte[] data)
-	{
-		var pckSize = ikcp_peeksize(KCPDataPtr);
-		if(pckSize < 0)
+		foreach(var kcp in _KCPConnects)
 		{
-			data = [];
-			return false;
+			kcp.Value.Update(current);
 		}
-		data = new byte[pckSize];
-		ikcp_recv(KCPDataPtr, data, data.Length);
-		return true;
 	}
-	public static void Flush()
+	public void Release(KCPConnectKey connectKey)
 	{
-		ikcp_flush(KCPDataPtr);
+		_KCPConnects[connectKey].Release();
+		_KCPConnects.Remove(connectKey);
 	}
-}
-
-public partial class KCPUtil
-{
-
-	public static bool IsReady()
+	public static void Input(IPEndPoint iPEndPoint, byte[] data)
 	{
-		return KCPDataPtr != IntPtr.Zero;
+		var connectKey = new KCPConnectKey(iPEndPoint);
+		if(!_KCPConnects.ContainsKey(connectKey))
+		{
+			Connect(iPEndPoint);
+		}
+		_KCPConnects[connectKey].Input(data);
+	}
+
+	public static void Send(KCPConnectKey connectKey, byte[] data)
+	{
+		_KCPConnects[connectKey].Send(data);
+	}
+	public static bool TryReceive(out KCPConnectKey connectKey, out byte[] data)
+	{
+		foreach (var kcp in _KCPConnects)
+		{
+			if (kcp.Value.TryReceive(out data))
+			{
+				connectKey = kcp.Key;
+				return true;
+			}
+		}
+		connectKey = new KCPConnectKey();
+		data = null;
+		return false;
+	}
+	public static void Flush(KCPConnectKey connectKey)
+	{
+		_KCPConnects[connectKey].Flush();
 	}
 }

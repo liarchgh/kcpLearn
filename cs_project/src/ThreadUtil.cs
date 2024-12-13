@@ -1,4 +1,3 @@
-
 public class ThreadUtil
 {
 	private static int millisecondsTimeout = 100;
@@ -18,24 +17,21 @@ public class ThreadUtil
 			while (true) {
 				try
 				{
-					if(KCPUtil.IsReady())
+					var begin = TimeUtil.GetTimeStamp();
+					action(begin);
+					var end = TimeUtil.GetTimeStamp();
+					var cost = end - begin;
+					if(callInternal <= 0)
 					{
-						var begin = TimeUtil.GetTimeStamp();
-						action(begin);
-						var end = TimeUtil.GetTimeStamp();
-						var cost = end - begin;
-						if(callInternal <= 0)
-						{
-							continue;
-						}
-						var sleep = callInternal - cost;
-						if(sleep <= 0)
-						{
-							LogUtil.Error($"sleep time too long, name:{name}, sleep:{sleep}, cost: {cost}, begin:{begin}, end:{end}");
-							continue;
-						}
-						Thread.Sleep((int)sleep);
+						continue;
 					}
+					var sleep = callInternal - cost;
+					if(sleep <= 0)
+					{
+						LogUtil.Error($"sleep time too long, name:{name}, sleep:{sleep}, cost: {cost}, begin:{begin}, end:{end}");
+						continue;
+					}
+					Thread.Sleep((int)sleep);
 				}
 				catch (Exception e)
 				{

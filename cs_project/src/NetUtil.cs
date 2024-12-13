@@ -1,12 +1,10 @@
-using System.Net;
-
-partial class NetUtil
+public partial class NetUtil
 {
-	public static void StartClientThreads(int localPort, IPEndPoint iPPort)
+	// TODO KCPConnectKey是不是不应该传出来
+	public delegate void ServerDataHandle(KCPConnectKey iPEndPoint, byte[] bytes);
+	public static void StartServerThreads(int localPort, ServerDataHandle action)
 	{
 		UDPUtil.Init(localPort);
-
-		KCPUtil.Create(1, 1101, iPPort);
 
 		UDPUtil.AddListen(KCPUtil.Input);
 
@@ -14,44 +12,26 @@ partial class NetUtil
 		{
 			KCPUtil.Update((uint)begin);
 			UDPUtil.HandleReceiveMsg(begin);
-			if(_pcksToSend.TryDequeue(out var bs))
+			if (KCPUtil.TryReceive(out var connectKey, out var bs))
 			{
-				KCPUtil.Send(GenKCPPck(bs.Item1, bs.Item2));
+				action(connectKey, bs);
 			}
 		}).Start();
 	}
-	public static void StartServerThreads(int localPort, IPEndPoint iPPort, Action<byte[]> action)
-	{
-		UDPUtil.Init(localPort);
-
-		KCPUtil.Create(1, 1101, iPPort);
-
-		UDPUtil.AddListen(KCPUtil.Input);
-
-		ThreadUtil.GenerateServiceThread("kcp update", (begin) =>
-		{
-			KCPUtil.Update((uint)begin);
-			UDPUtil.HandleReceiveMsg(begin);
-			if (KCPUtil.TryReceive(out var bs))
-			{
-				action(bs);
-			}
-		}).Start();
-	}
-	private static Queue<(PCK_TYPE, byte[])> _pcksToSend = new Queue<(PCK_TYPE, byte[])>();
-	public static void SendText(string text)
+	protected static Queue<(PCK_TYPE, byte[])> _pcksToSend = new Queue<(PCK_TYPE, byte[])>();
+	public static void SendText(KCPConnectKey connectKey, string text)
 	{
 		var bs = System.Text.Encoding.UTF8.GetBytes(text);
-		_sendBytes(PCK_TYPE.TEXT, bs);
+		_sendBytes(connectKey, PCK_TYPE.TEXT, bs);
 	}
-	public static void SendFile(string filePath)
+	public static void SendFile(KCPConnectKey connectKey, string filePath)
 	{
 		var bs = File.ReadAllBytes(filePath);
-		_sendBytes(PCK_TYPE.FILE, bs);
+		_sendBytes(connectKey, PCK_TYPE.FILE, bs);
 	}
-	private static void _sendBytes(PCK_TYPE dataType, byte[] bs)
+	protected static void _sendBytes(KCPConnectKey connectKey, PCK_TYPE dataType, byte[] bs)
 	{
-		var kcpData = KCPUtil.GetKCPData();
+		if(!KCPUtil.TryGetKCPData(connectKey, out var kcpData)) return;
 		var singlePckMaxSize = (int)kcpData.mss * (KCPUtil.FRG_MAX-1)-1;
 		var multPckMaxSize = singlePckMaxSize-1;
 		if(bs.Length >= singlePckMaxSize)
@@ -72,28 +52,35 @@ partial class NetUtil
 			_pcksToSend.Enqueue((dataType, bs));
 		}
 	}
-	private static byte[] GenKCPPck(PCK_TYPE dataType, byte[] bs)
+	protected static byte[] GenKCPPck(PCK_TYPE dataType, byte[] bs)
 	{
 		var bsToSend = new byte[bs.Length+1];
 		bsToSend[0] = (byte)dataType;
 		bs.CopyTo(bsToSend, 1);
 		return bsToSend;
 	}
-	private enum PCK_TYPE
+	protected enum PCK_TYPE
 	{
 		MULS =	0x00,
 		MULE =	0x01,
 		TEXT =	0x02,
 		FILE =	0x03,
 	}
-	private static Dictionary<PCK_TYPE, Action<byte[]>> PacketHandlers = new Dictionary<PCK_TYPE, Action<byte[]>>()
+	private delegate void KCPPackageHandler(KCPConnectKey connectKey, byte[] bs);
+	private static Dictionary<PCK_TYPE, KCPPackageHandler> PacketHandlers = new Dictionary<PCK_TYPE, KCPPackageHandler>()
 	{
 		// DEBUG
-		{PCK_TYPE.TEXT, (bs) => { LogUtil.Info(System.Text.Encoding.UTF8.GetString(bs)); }},
-		{PCK_TYPE.FILE, (bs) => { File.WriteAllBytes("test.bin", bs); }},
+		{PCK_TYPE.TEXT, (connectKey, bs) => { LogUtil.Info($"{connectKey}:{System.Text.Encoding.UTF8.GetString(bs)}"); }},
+		{PCK_TYPE.FILE, (connectKey, bs) =>
+			{
+				var filePath = "test.bin";
+				LogUtil.Info($"receive file from:{connectKey}, to file:{filePath}");
+				File.WriteAllBytes(filePath, bs);
+			}
+		},
 	};
 	private static List<byte> _kcpPckReceiveCache = new List<byte>();
-	public static void OnPckBytes(byte[] bs)
+	public static void OnPckBytes(KCPConnectKey connectKey, byte[] bs)
 	{
 		var dataType = (PCK_TYPE)bs[0];
 		if(dataType == PCK_TYPE.MULS
@@ -104,12 +91,16 @@ partial class NetUtil
 			{
 				var pckBs = _kcpPckReceiveCache.ToArray();
 				_kcpPckReceiveCache.Clear();
-				OnPckBytes(pckBs);
+				OnPckBytes(connectKey, pckBs);
 			}
 		}
 		else if(PacketHandlers.TryGetValue(dataType, out var packetHandler))
 		{
-			packetHandler.Invoke(bs[1..]);
+			packetHandler.Invoke(connectKey, bs[1..]);
+		}
+		else
+		{
+			LogUtil.Error($"unknown packet type:{dataType}, bytes base64:{System.Convert.ToBase64String(bs)}");
 		}
 	}
 }
