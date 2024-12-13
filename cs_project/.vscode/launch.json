@@ -23,7 +23,10 @@
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
-			"stopAtEntry": false
+			"stopAtEntry": false,
+			"presentation": {
+				"group": "kcp"
+			}
 		},
 		{
 			// Use IntelliSense to find out which attributes exist for C# debugging
@@ -39,7 +42,10 @@
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
-			"stopAtEntry": false
+			"stopAtEntry": false,
+			"presentation": {
+				"group": "kcp"
+			}
 		},
 		{
 			// Use IntelliSense to find out which attributes exist for C# debugging
@@ -55,12 +61,26 @@
 			"cwd": "${workspaceFolder}",
 			// For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
 			"console": "internalConsole",
-			"stopAtEntry": false
+			"stopAtEntry": false,
+			"presentation": {
+				"group": "kcp"
+			}
 		},
 		{
 			"name": ".NET Core Attach",
 			"type": "coreclr",
 			"request": "attach"
+		}
+	],
+	"compounds": [
+		{
+			"name": "kcp server with multi clients",
+			"configurations": ["kcp server", "kcp client 1", "kcp client 2"],
+			"stopAll": true,
+			"presentation": {
+				"group": "kcp",
+				"order": 1
+			}
 		}
 	]
 }
